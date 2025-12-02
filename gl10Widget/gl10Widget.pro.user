@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
+<<<<<<< HEAD
 <!-- Written by QtCreator 16.0.2, 2025-11-30T18:14:07. -->
+=======
+<<<<<<< HEAD
+<!-- Written by QtCreator 16.0.2, 2025-11-23T14:51:42. -->
+=======
+<!-- Written by QtCreator 16.0.2, 2025-11-23T14:32:06. -->
+>>>>>>> 8d7186b0cf2dcb99325e9531994cacd0791fc9f6
+>>>>>>> 90cbc32b9629054125ca0908950d5b4b44dff99b
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -162,10 +170,24 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+<<<<<<< HEAD
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">D:/workspace/temp/testcode/Qt-OpenGL/gl10Widget/gl10Widget.pro</value>
     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+=======
+<<<<<<< HEAD
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">gl10Widget2</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">D:/workspace/temp/testcode/Qt-OpenGL/gl10Widget/gl10Widget.pro</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+=======
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">D:/workspace/temp/testcode/gl10Widget/gl10Widget.pro</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+>>>>>>> 8d7186b0cf2dcb99325e9531994cacd0791fc9f6
+>>>>>>> 90cbc32b9629054125ca0908950d5b4b44dff99b
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
