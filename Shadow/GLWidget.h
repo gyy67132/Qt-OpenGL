@@ -9,10 +9,10 @@
 #include <QOpenGLTexture>
 
 #include <QVector>
+#include <QKeyEvent>
+#include <QApplication>
 
-class Camera{
-    Camera(QVector3D eye, QVector3D center, QVector3D up);
-};
+#include "Camera.h"
 
 class GLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
@@ -21,9 +21,7 @@ class GLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 public:
     GLWidget()
     {
-        //QSurfaceFormat format;
-        //format.setVersion(4,3);
-        //setFormat(format);
+
     }
 
 protected:
@@ -98,32 +96,15 @@ protected:
         cubeVertexVbo.allocate(vertices, sizeof(vertices));
         cubeVertexVbo.release();
 
-        const char vertexShaderString [] =
-            "attribute highp vec4 pos;\n"
-            "attribute lowp vec4 normal;\n"
-            "attribute lowp vec4 texcoord;\n"
-            "uniform highp mat4 matrix;\n"
-            "varying mediump vec4 outTexc;\n"
-            "void main(){\n"
-            "  gl_Position =  matrix * pos;\n"
-            "  outTexc = texcoord;\n"
-            "}\n";
-        const char fragmentShaderString [] =
-            "varying mediump vec4 outTexc;\n"
-            "uniform sampler2D texture;\n"
-            "void main(){\n"
-            "  gl_FragColor = texture2D(texture, outTexc.st);\n"
-            "}\n";
-
         vertexShader = new QOpenGLShader(QOpenGLShader::Vertex, this);
-        if(!vertexShader->compileSourceCode(vertexShaderString))
+        if(!vertexShader->compileSourceFile(":/Vertex.glsl"))
         {
             qDebug()<<vertexShader->log();
             return;
         }
 
         fragShader = new QOpenGLShader(QOpenGLShader::Fragment, this);
-        if(!fragShader->compileSourceCode(fragmentShaderString))
+        if(!fragShader->compileSourceFile(":/Fragment.glsl"))
         {
             qDebug()<<fragShader->log();
             return;
@@ -139,6 +120,8 @@ protected:
         }
 
         texture = new QOpenGLTexture(QImage(":/wood.png").mirrored());
+
+        matrixPerspective.perspective(60, 800/600, 0.1, 100);
     }
     virtual void resizeGL(int w, int h) override
     {
@@ -148,8 +131,9 @@ protected:
     }
     virtual void paintGL() override
     {
-        glClearColor(0.0, 0.0, 0.0, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0.1, 0.1, 0.1, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
 
         shaderProgram.bind();
         planVertexVbo.bind();
@@ -162,17 +146,34 @@ protected:
         shaderProgram.setAttributeBuffer("texcoord", GL_FLOAT, 6*sizeof(float), 2, 8*sizeof(float));
 
         texture->bind(0);
-        shaderProgram.setUniformValue("texture", 0);
-        QMatrix4x4 m;
-        m.translate(0,0,-3);
+        shaderProgram.setUniformValue("texture1", 0);
 
-        QMatrix4x4 m2;
-        m2.perspective(60, 800/600, 0.1, 100);
-        shaderProgram.setUniformValue("matrix", m2 * m);
+        shaderProgram.setUniformValue("model", QMatrix4x4());
+        shaderProgram.setUniformValue("matrix", matrixPerspective * camera.viewMartix());
+        shaderProgram.setUniformValue("lightPos", lightPos);
+        shaderProgram.setUniformValue("cameraPos", camera.cameraPos());
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        //shaderProgram.bind();
+        QMatrix4x4 matrixModel;
+        matrixModel.translate(0, 1.5, 0);
+        matrixModel.scale(0.5);
+        renderCube(matrixModel);
+
+        matrixModel.setToIdentity();
+        matrixModel.translate(2,0,1);
+        matrixModel.scale(0.5);
+        renderCube(matrixModel);
+
+        matrixModel.setToIdentity();
+        matrixModel.translate(-1,0,2);
+        matrixModel.rotate(60, 1,0,1);
+        matrixModel.scale(0.25);
+        renderCube(matrixModel);
+    }
+
+    void renderCube(QMatrix4x4 matrixModel)
+    {
         cubeVertexVbo.bind();
         shaderProgram.enableAttributeArray("pos");
         shaderProgram.setAttributeBuffer("pos", GL_FLOAT, 0, 3, 8*sizeof(float));
@@ -181,29 +182,76 @@ protected:
         shaderProgram.enableAttributeArray("texcoord");
         shaderProgram.setAttributeBuffer("texcoord", GL_FLOAT, 6*sizeof(float), 2, 8*sizeof(float));
 
-        //texture->bind(0);
-        //shaderProgram.setUniformValue("texture", 0);
-
-        QMatrix4x4 m3;
-        m3.translate(0,0,-3);
-
-        QMatrix4x4 m4;
-        m4.perspective(60, 800/600, 0.1, 100);
-
-        QMatrix4x4 m5;
-        m5.translate(0, 1.5, 0);
-        m5.scale(0.5);
-        shaderProgram.setUniformValue("matrix", m4 * m3 * m5 );
+        //shaderProgram.setUniformValue("matrix", matrixPerspective * camera.viewMartix());
+        shaderProgram.setUniformValue("model", matrixModel );
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
 
-private:
 
+
+private:
     QOpenGLBuffer planVertexVbo;
     QOpenGLBuffer cubeVertexVbo;
     QOpenGLShader *vertexShader = nullptr;
     QOpenGLShader *fragShader = nullptr;
     QOpenGLShaderProgram shaderProgram;
     QOpenGLTexture *texture = nullptr;
+    QMatrix4x4 matrixPerspective;
+    Camera camera;
+    bool pressed = false;
+    QPoint lastPos;
+    QVector3D lightPos = QVector3D(-2, 4, -1);
+
+protected:
+    virtual void keyPressEvent(QKeyEvent *event) override
+    {
+        if(event->key() == Qt::Key_Down){
+            camera.down();
+        }else if(event->key() == Qt::Key_Up){
+            camera.upward();
+        }else if(event->key() == Qt::Key_Left){
+            camera.left();
+        }else if(event->key() == Qt::Key_Right){
+            camera.towardsTheRight();
+        }else if(event->key() == Qt::Key_Space){
+            camera.restore();
+        }else if(event->key() == Qt::Key_Escape){
+            QApplication::quit();
+        }else if(event->key() == Qt::Key_W){
+            camera.forward();
+        }else if(event->key() == Qt::Key_A){
+            camera.left();
+        }else if(event->key() == Qt::Key_S){
+            camera.back();
+        }else if(event->key() == Qt::Key_D){
+            camera.towardsTheRight();
+        }
+        update();
+        QWidget::keyPressEvent(event);
+    }
+
+    virtual void mousePressEvent(QMouseEvent *event) override
+    {
+        pressed = true;
+        lastPos = event->pos();
+        QWidget::mousePressEvent(event);
+    }
+
+    virtual void mouseReleaseEvent(QMouseEvent *event) override
+    {
+        pressed = false;
+        QWidget::mouseReleaseEvent(event);
+    }
+
+    virtual void mouseMoveEvent(QMouseEvent *event) override
+    {
+        if(pressed){
+            QPoint change = event->pos() - lastPos;
+            camera.rotate(change.x(), change.y());
+            lastPos = event->pos();
+        }
+        update();
+        QWidget::mouseMoveEvent(event);
+    }
 };
 #endif // GLWIDGET_H

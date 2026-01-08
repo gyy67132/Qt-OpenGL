@@ -12,6 +12,7 @@ SOURCES += \
     main.cpp
 
 HEADERS += \
+    Camera.h \
     GLWidget.h
 
 FORMS +=
