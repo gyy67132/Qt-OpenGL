@@ -3,5 +3,7 @@
         <file>wood.png</file>
         <file>Vertex.glsl</file>
         <file>Fragment.glsl</file>
+        <file>Fragment_depthmap.glsl</file>
+        <file>Vertex_depthmap.glsl</file>
     </qresource>
 </RCC>

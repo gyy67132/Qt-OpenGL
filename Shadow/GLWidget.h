@@ -7,12 +7,14 @@
 #include <QOpenGLShader>
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
+#include <QOpenGLFramebufferObject>
 
 #include <QVector>
 #include <QKeyEvent>
 #include <QApplication>
 
 #include "Camera.h"
+
 
 class GLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
@@ -96,32 +98,60 @@ protected:
         cubeVertexVbo.allocate(vertices, sizeof(vertices));
         cubeVertexVbo.release();
 
-        vertexShader = new QOpenGLShader(QOpenGLShader::Vertex, this);
+        QOpenGLShader *vertexShader = new QOpenGLShader(QOpenGLShader::Vertex, this);
         if(!vertexShader->compileSourceFile(":/Vertex.glsl"))
         {
             qDebug()<<vertexShader->log();
             return;
         }
 
-        fragShader = new QOpenGLShader(QOpenGLShader::Fragment, this);
+        QOpenGLShader *fragShader = new QOpenGLShader(QOpenGLShader::Fragment, this);
         if(!fragShader->compileSourceFile(":/Fragment.glsl"))
         {
             qDebug()<<fragShader->log();
             return;
         }
 
-        shaderProgram.addShader(vertexShader);
-        shaderProgram.addShader(fragShader);
+        shaderProgram_common.addShader(vertexShader);
+        shaderProgram_common.addShader(fragShader);
 
-        shaderProgram.link();
-        if(!shaderProgram.isLinked()){
-            qDebug() << shaderProgram.log();
+        shaderProgram_common.link();
+        if(!shaderProgram_common.isLinked()){
+            qDebug() << shaderProgram_common.log();
             return;
         }
 
         texture = new QOpenGLTexture(QImage(":/wood.png").mirrored());
 
         matrixPerspective.perspective(60, 800/600, 0.1, 100);
+
+        QOpenGLShader* vertexShaderDepthmap = new QOpenGLShader(QOpenGLShader::Vertex, this);
+        if(!vertexShaderDepthmap->compileSourceFile(":/Vertex_depthmap.glsl"))
+        {
+            qDebug()<<vertexShaderDepthmap->log();
+            return;
+        }
+
+        QOpenGLShader* fragShaderDepthmap = new QOpenGLShader(QOpenGLShader::Fragment, this);
+        if(!fragShaderDepthmap->compileSourceFile(":/Fragment_depthmap.glsl"))
+        {
+            qDebug()<<fragShaderDepthmap->log();
+            return;
+        }
+        shaderProgram_depthmap.addShader(vertexShaderDepthmap);
+        shaderProgram_depthmap.addShader(fragShaderDepthmap);
+        shaderProgram_depthmap.link();
+        if(!shaderProgram_depthmap.isLinked()){
+            qDebug() << shaderProgram_depthmap.log();
+            return;
+        }
+        QSize test = size();
+        QOpenGLFramebufferObjectFormat format;
+        format.setAttachment(QOpenGLFramebufferObject::Depth);
+        format.setInternalTextureFormat(GL_DEPTH_COMPONENT32F);
+        fbo = new QOpenGLFramebufferObject(size() , format);
+        lightViewMatrix.lookAt(lightPos, QVector3D(0, 0, 0), QVector3D(0, 1, 0));
+        lightMatrixOrtho.ortho(-10, 10, -10, 10, 0.1, 20);
     }
     virtual void resizeGL(int w, int h) override
     {
@@ -131,13 +161,48 @@ protected:
     }
     virtual void paintGL() override
     {
+        fbo->bind();
+
         glClearColor(0.1, 0.1, 0.1, 1.0);
+        glClearDepthf(1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 
+        shaderProgram_depthmap.bind();
+        shaderProgram_depthmap.setUniformValue("lightMatrix", lightMatrixOrtho * camera.viewMartix());
+        renderScene(shaderProgram_depthmap);
+        shaderProgram_depthmap.release();
+
+        fbo->release();
+
+        saveDepthMap(this, "./depth.png");
+        glClearColor(0.1, 0.1, 0.1, 1.0);
+        glClearDepthf(1.0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
+
+        //glViewport(0, 0, width(), height());
+        //float* depthData = new float[size().width() * size().height()];
+        //glReadPixels(0, 0, width(), height(), GL_DEPTH_COMPONENT, GL_FLOAT, depthData);
+        //QImage image(depthData)//fbo->toImage(true, 0);
+        //image.save("./depth.png");
+
+
+        shaderProgram_common.bind();
+        texture->bind(0);
+        shaderProgram_common.setUniformValue("texture1", 0);
+        shaderProgram_common.setUniformValue("model", QMatrix4x4());
+        shaderProgram_common.setUniformValue("matrix", matrixPerspective * camera.viewMartix());
+        shaderProgram_common.setUniformValue("lightPos", lightPos);
+        shaderProgram_common.setUniformValue("cameraPos", camera.cameraPos());
+        renderScene(shaderProgram_common);
+        shaderProgram_common.release();
+    }
+
+    void renderScene(QOpenGLShaderProgram& shaderProgram)
+    {
         shaderProgram.bind();
         planVertexVbo.bind();
-
         shaderProgram.enableAttributeArray("pos");
         shaderProgram.setAttributeBuffer("pos", GL_FLOAT, 0, 3, 8*sizeof(float));
         shaderProgram.enableAttributeArray("normal");
@@ -145,34 +210,26 @@ protected:
         shaderProgram.enableAttributeArray("texcoord");
         shaderProgram.setAttributeBuffer("texcoord", GL_FLOAT, 6*sizeof(float), 2, 8*sizeof(float));
 
-        texture->bind(0);
-        shaderProgram.setUniformValue("texture1", 0);
-
-        shaderProgram.setUniformValue("model", QMatrix4x4());
-        shaderProgram.setUniformValue("matrix", matrixPerspective * camera.viewMartix());
-        shaderProgram.setUniformValue("lightPos", lightPos);
-        shaderProgram.setUniformValue("cameraPos", camera.cameraPos());
-
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         QMatrix4x4 matrixModel;
         matrixModel.translate(0, 1.5, 0);
         matrixModel.scale(0.5);
-        renderCube(matrixModel);
+        renderCube(shaderProgram, matrixModel);
 
         matrixModel.setToIdentity();
         matrixModel.translate(2,0,1);
         matrixModel.scale(0.5);
-        renderCube(matrixModel);
+        renderCube(shaderProgram, matrixModel);
 
         matrixModel.setToIdentity();
         matrixModel.translate(-1,0,2);
         matrixModel.rotate(60, 1,0,1);
         matrixModel.scale(0.25);
-        renderCube(matrixModel);
+        renderCube(shaderProgram, matrixModel);
     }
 
-    void renderCube(QMatrix4x4 matrixModel)
+    void renderCube(QOpenGLShaderProgram& shaderProgram,const QMatrix4x4& matrixModel)
     {
         cubeVertexVbo.bind();
         shaderProgram.enableAttributeArray("pos");
@@ -182,7 +239,6 @@ protected:
         shaderProgram.enableAttributeArray("texcoord");
         shaderProgram.setAttributeBuffer("texcoord", GL_FLOAT, 6*sizeof(float), 2, 8*sizeof(float));
 
-        //shaderProgram.setUniformValue("matrix", matrixPerspective * camera.viewMartix());
         shaderProgram.setUniformValue("model", matrixModel );
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
@@ -192,15 +248,17 @@ protected:
 private:
     QOpenGLBuffer planVertexVbo;
     QOpenGLBuffer cubeVertexVbo;
-    QOpenGLShader *vertexShader = nullptr;
-    QOpenGLShader *fragShader = nullptr;
-    QOpenGLShaderProgram shaderProgram;
+    QOpenGLShaderProgram shaderProgram_common;
+    QOpenGLShaderProgram shaderProgram_depthmap;
     QOpenGLTexture *texture = nullptr;
     QMatrix4x4 matrixPerspective;
+    QMatrix4x4 lightMatrixOrtho;
     Camera camera;
     bool pressed = false;
     QPoint lastPos;
     QVector3D lightPos = QVector3D(-2, 4, -1);
+    QOpenGLFramebufferObject *fbo = nullptr;
+    QMatrix4x4 lightViewMatrix;
 
 protected:
     virtual void keyPressEvent(QKeyEvent *event) override
@@ -252,6 +310,42 @@ protected:
         }
         update();
         QWidget::mouseMoveEvent(event);
+    }
+
+    void saveDepthMap(QOpenGLWidget* widget, const QString& outputPath) {
+        // 获取窗口尺寸
+        int width = widget->width();
+        int height = widget->height();
+
+        // 读取深度数据
+        QVector<float> depthData(width * height);
+        glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, depthData.data());
+        for(int i = 0; i<depthData.size();i++)
+        {
+            float t= depthData[i];
+            if(qFabs(t) >= 0.00000001 && depthData[i] != 1 && qFabs(t) <= 0.9){
+                float a = t;
+                float b = a;
+            }
+        }
+        // 转换为QImage
+        QImage depthImage(width, height, QImage::Format_ARGB32);
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                float depth = depthData[y * width + x];
+                // 归一化深度值到[0, 255]
+                int intensity = static_cast<int>(qBound(0.0f, depth, 1.0f) * 255.0f);
+                QRgb color = qRgb(intensity, intensity, intensity);
+                depthImage.setPixel(x, height - 1 - y, color); // 垂直翻转
+            }
+        }
+
+        // 保存图片
+        if (!depthImage.save(outputPath)) {
+            qDebug() << "保存深度图失败:" << outputPath;
+        } else {
+            qDebug() << "深度图已保存:" << outputPath;
+        }
     }
 };
 #endif // GLWIDGET_H
