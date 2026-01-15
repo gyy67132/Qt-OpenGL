@@ -145,11 +145,12 @@ protected:
             qDebug() << shaderProgram_depthmap.log();
             return;
         }
-        QSize test = size();
+
         QOpenGLFramebufferObjectFormat format;
-        format.setAttachment(QOpenGLFramebufferObject::Depth);
-        format.setInternalTextureFormat(GL_DEPTH_COMPONENT32F);
+        format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+        //format.setInternalTextureFormat(GL_DEPTH_COMPONENT32F);
         fbo = new QOpenGLFramebufferObject(size() , format);
+
         lightViewMatrix.lookAt(lightPos, QVector3D(0, 0, 0), QVector3D(0, 1, 0));
         lightMatrixOrtho.ortho(-10, 10, -10, 10, 0.1, 20);
     }
@@ -168,14 +169,15 @@ protected:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 
+        glViewport(0, 0, 640, 480);
         shaderProgram_depthmap.bind();
         shaderProgram_depthmap.setUniformValue("lightMatrix", lightMatrixOrtho * camera.viewMartix());
         renderScene(shaderProgram_depthmap);
         shaderProgram_depthmap.release();
 
         fbo->release();
-
         saveDepthMap(this, "./depth.png");
+
         glClearColor(0.1, 0.1, 0.1, 1.0);
         glClearDepthf(1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -187,7 +189,7 @@ protected:
         //QImage image(depthData)//fbo->toImage(true, 0);
         //image.save("./depth.png");
 
-
+        glViewport(0, 0, size().width(), size().height());
         shaderProgram_common.bind();
         texture->bind(0);
         shaderProgram_common.setUniformValue("texture1", 0);
@@ -246,6 +248,8 @@ protected:
 
 
 private:
+
+private:
     QOpenGLBuffer planVertexVbo;
     QOpenGLBuffer cubeVertexVbo;
     QOpenGLShaderProgram shaderProgram_common;
@@ -259,6 +263,7 @@ private:
     QVector3D lightPos = QVector3D(-2, 4, -1);
     QOpenGLFramebufferObject *fbo = nullptr;
     QMatrix4x4 lightViewMatrix;
+    QOpenGLTexture *depthTexture = nullptr;
 
 protected:
     virtual void keyPressEvent(QKeyEvent *event) override
@@ -314,8 +319,8 @@ protected:
 
     void saveDepthMap(QOpenGLWidget* widget, const QString& outputPath) {
         // 获取窗口尺寸
-        int width = widget->width();
-        int height = widget->height();
+        int width = 640;
+        int height = 480;
 
         // 读取深度数据
         QVector<float> depthData(width * height);
@@ -329,12 +334,12 @@ protected:
             }
         }
         // 转换为QImage
-        QImage depthImage(width, height, QImage::Format_ARGB32);
+        QImage depthImage(width, height, QImage::Format_RGB888);
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 float depth = depthData[y * width + x];
                 // 归一化深度值到[0, 255]
-                int intensity = static_cast<int>(qBound(0.0f, depth, 1.0f) * 255.0f);
+                int intensity = static_cast<int>(qBound(0.0f, depth, 1.0f) * 255.0f * 20);
                 QRgb color = qRgb(intensity, intensity, intensity);
                 depthImage.setPixel(x, height - 1 - y, color); // 垂直翻转
             }
