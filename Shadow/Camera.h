@@ -7,7 +7,7 @@
 
 class Camera{
 public:
-    Camera(QVector3D eyeValue = QVector3D(0, 1, 10), QVector3D centerValue = QVector3D(0,1,0), QVector3D worldUpValue = QVector3D(0, 1, 0))
+    Camera(QVector3D eyeValue = QVector3D(0, 1, 6), QVector3D centerValue = QVector3D(0,1,0), QVector3D worldUpValue = QVector3D(0, 1, 0))
     {
         eye = eyeValue;
         center = centerValue;

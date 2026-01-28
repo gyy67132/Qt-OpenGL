@@ -123,7 +123,7 @@ protected:
 
         texture = new QOpenGLTexture(QImage(":/wood.png").mirrored());
 
-        matrixPerspective.perspective(60, 800/600, 0.1, 100);
+        matrixPerspective.perspective(60, 800/600, 1, 1000);
 
         QOpenGLShader* vertexShaderDepthmap = new QOpenGLShader(QOpenGLShader::Vertex, this);
         if(!vertexShaderDepthmap->compileSourceFile(":/Vertex_depthmap.glsl"))
@@ -147,12 +147,30 @@ protected:
         }
 
         QOpenGLFramebufferObjectFormat format;
-        format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
-        //format.setInternalTextureFormat(GL_DEPTH_COMPONENT32F);
+        format.setAttachment(QOpenGLFramebufferObject::Depth);
         fbo = new QOpenGLFramebufferObject(size() , format);
 
         lightViewMatrix.lookAt(lightPos, QVector3D(0, 0, 0), QVector3D(0, 1, 0));
-        lightMatrixOrtho.ortho(-10, 10, -10, 10, 0.1, 20);
+        //lightMatrixOrtho.ortho(-7, 7, -7, 7, 1, 7.5);
+        lightMatrixOrtho.ortho(-10, 10, -10, 10, 0, 7.5);
+
+        //深度纹理
+        depthTexture = new QOpenGLTexture(QOpenGLTexture::Target2D);
+        depthTexture->setFormat(QOpenGLTexture::D32F);
+        depthTexture->setSize(size().width(), size().height());
+        depthTexture->setMinMagFilters(QOpenGLTexture::Nearest, QOpenGLTexture::Nearest);
+        depthTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
+        depthTexture->setAutoMipMapGenerationEnabled(false);
+        depthTexture->allocateStorage();
+
+        fbo->bind();
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture->textureId(), 0);
+        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+            qDebug() << "Framebuffer is not complete!";
+            return;
+        }
+        fbo->release();
+
     }
     virtual void resizeGL(int w, int h) override
     {
@@ -162,43 +180,49 @@ protected:
     }
     virtual void paintGL() override
     {
-        fbo->bind();
+        {
+            fbo->bind();
+
+            glClearColor(0.1, 0.1, 0.1, 1.0);
+            glClearDepthf(1.0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glEnable(GL_DEPTH_TEST);
+
+            glViewport(0, 0, size().width(), size().height());
+            shaderProgram_depthmap.bind();
+            QMatrix4x4 modelMatrix;
+            modelMatrix.setToIdentity();
+            shaderProgram_depthmap.setUniformValue("model", modelMatrix);
+            shaderProgram_depthmap.setUniformValue("lightMatrix", lightMatrixOrtho * lightViewMatrix);
+            renderScene(shaderProgram_depthmap);
+            shaderProgram_depthmap.release();
+            //saveDepthMap(this, "./depth.png");
+
+            //depthTexture->bind();
+            //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 0, 0, size().width(), size().height(), 0);
+            //depthTexture->release();
+            //saveTextureAsImage(depthTexture,  "./depth2.png");
+            fbo->release();
+        }
 
         glClearColor(0.1, 0.1, 0.1, 1.0);
         glClearDepthf(1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
-
-        glViewport(0, 0, 640, 480);
-        shaderProgram_depthmap.bind();
-        shaderProgram_depthmap.setUniformValue("lightMatrix", lightMatrixOrtho * camera.viewMartix());
-        renderScene(shaderProgram_depthmap);
-        shaderProgram_depthmap.release();
-
-        fbo->release();
-        saveDepthMap(this, "./depth.png");
-
-        glClearColor(0.1, 0.1, 0.1, 1.0);
-        glClearDepthf(1.0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glEnable(GL_DEPTH_TEST);
-
-        //glViewport(0, 0, width(), height());
-        //float* depthData = new float[size().width() * size().height()];
-        //glReadPixels(0, 0, width(), height(), GL_DEPTH_COMPONENT, GL_FLOAT, depthData);
-        //QImage image(depthData)//fbo->toImage(true, 0);
-        //image.save("./depth.png");
 
         glViewport(0, 0, size().width(), size().height());
         shaderProgram_common.bind();
         texture->bind(0);
-        shaderProgram_common.setUniformValue("texture1", 0);
+        depthTexture->bind(1);
+        shaderProgram_common.setUniformValue("depthTexture", 1);
         shaderProgram_common.setUniformValue("model", QMatrix4x4());
         shaderProgram_common.setUniformValue("matrix", matrixPerspective * camera.viewMartix());
+        shaderProgram_common.setUniformValue("lightMatrix", lightMatrixOrtho * lightViewMatrix);
         shaderProgram_common.setUniformValue("lightPos", lightPos);
         shaderProgram_common.setUniformValue("cameraPos", camera.cameraPos());
         renderScene(shaderProgram_common);
         shaderProgram_common.release();
+
     }
 
     void renderScene(QOpenGLShaderProgram& shaderProgram)
@@ -319,8 +343,8 @@ protected:
 
     void saveDepthMap(QOpenGLWidget* widget, const QString& outputPath) {
         // 获取窗口尺寸
-        int width = 640;
-        int height = 480;
+        int width = size().width();
+        int height = size().height();
 
         // 读取深度数据
         QVector<float> depthData(width * height);
@@ -339,7 +363,7 @@ protected:
             for (int x = 0; x < width; ++x) {
                 float depth = depthData[y * width + x];
                 // 归一化深度值到[0, 255]
-                int intensity = static_cast<int>(qBound(0.0f, depth, 1.0f) * 255.0f * 20);
+                int intensity = static_cast<int>(qBound(0.0f, depth, 1.0f) * 255.0f);
                 QRgb color = qRgb(intensity, intensity, intensity);
                 depthImage.setPixel(x, height - 1 - y, color); // 垂直翻转
             }
@@ -351,6 +375,37 @@ protected:
         } else {
             qDebug() << "深度图已保存:" << outputPath;
         }
+    }
+
+    bool saveTextureAsImage(QOpenGLTexture* texture, const QString& filename)
+    {
+        if (!texture || !texture->isCreated())
+        {
+            qDebug() << "Invalid texture";
+            return false;
+        }
+
+        // 获取纹理尺寸
+        int width = texture->width();
+        int height = texture->height();
+
+        // 创建 QImage 存储像素数据
+        QImage image(width, height, QImage::Format_Grayscale8);
+
+        // 绑定纹理
+        texture->bind();
+
+        // 读取像素数据
+        glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, image.bits());
+
+        // 解绑纹理
+        texture->release();
+
+        // 由于OpenGL坐标系与 QImage 坐标系不同，需要翻转图像
+        image = image.mirrored(false, true);
+
+        // 保存图像
+        return image.save(filename);
     }
 };
 #endif // GLWIDGET_H
