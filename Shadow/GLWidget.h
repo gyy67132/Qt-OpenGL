@@ -159,9 +159,13 @@ protected:
         depthTexture->setFormat(QOpenGLTexture::D32F);
         depthTexture->setSize(size().width(), size().height());
         depthTexture->setMinMagFilters(QOpenGLTexture::Nearest, QOpenGLTexture::Nearest);
+        // depthTexture->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::ClampToBorder);
+        // depthTexture->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::ClampToBorder);
+        // depthTexture->setBorderColor(QColor(255,255,255,255));
         depthTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
         depthTexture->setAutoMipMapGenerationEnabled(false);
         depthTexture->allocateStorage();
+
 
         fbo->bind();
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture->textureId(), 0);
