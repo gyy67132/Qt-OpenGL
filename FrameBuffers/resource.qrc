@@ -2,5 +2,9 @@
     <qresource prefix="/">
         <file>fragment.glsl</file>
         <file>vertex.glsl</file>
+        <file>metal.png</file>
+        <file>container.jpg</file>
+        <file>quadFragment.glsl</file>
+        <file>quadVertex.glsl</file>
     </qresource>
 </RCC>
