@@ -6,6 +6,9 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    connect(this, &MainWindow::button_click , ui->openGLWidget, &MyOpenGLWidget::changeShowState);
+    connect(ui->pushButton , &QPushButton::clicked , this, [=](){emit button_click(0);});
 }
 
 MainWindow::~MainWindow()

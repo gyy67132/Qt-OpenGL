@@ -16,7 +16,8 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-
+signals:
+    void button_click(int flag);
 private:
     Ui::MainWindow *ui;
 };
