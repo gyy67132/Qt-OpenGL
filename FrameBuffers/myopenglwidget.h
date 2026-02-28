@@ -11,6 +11,7 @@
 
 class MyOpenGLWidget : public QOpenGLWidget, protected QOpenGLFunctions_3_3_Core
 {
+    Q_OBJECT
 public:
     MyOpenGLWidget(QWidget *parent);
 
@@ -19,6 +20,8 @@ protected:
     virtual void resizeGL(int w, int h);
     virtual void paintGL();
 
+public slots:
+    void changeShowState(int flag);
 private:
 
     QOpenGLVertexArrayObject vao;

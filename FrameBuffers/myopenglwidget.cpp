@@ -132,17 +132,17 @@ void MyOpenGLWidget::initializeGL()
     }
 
     QOpenGLFramebufferObjectFormat fboFormat;
-    fboFormat.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
+    fboFormat.setAttachment(QOpenGLFramebufferObject::Depth);
     fbo.reset(new QOpenGLFramebufferObject(this->size(), fboFormat));
 
     {
-        fboTexture.reset(new QOpenGLTexture(QOpenGLTexture::Target2D));
-        fboTexture->setSize(size().width(), size().height());
-        fboTexture->setFormat(QOpenGLTexture::RGBA8_UNorm);
-        fboTexture->allocateStorage();
-        fboTexture->setMinificationFilter(QOpenGLTexture::Linear);
-        fboTexture->setMagnificationFilter(QOpenGLTexture::Linear);
-        fboTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
+        // fboTexture.reset(new QOpenGLTexture(QOpenGLTexture::Target2D));
+        // fboTexture->setSize(size().width(), size().height());
+        // fboTexture->setFormat(QOpenGLTexture::RGBA8_UNorm);
+        // fboTexture->allocateStorage();
+        // fboTexture->setMinificationFilter(QOpenGLTexture::Linear);
+        // fboTexture->setMagnificationFilter(QOpenGLTexture::Linear);
+        // fboTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
     }
 
     {
@@ -217,10 +217,16 @@ void MyOpenGLWidget::paintGL()
     fbo->release();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
     shaderProgramQuad->bind();
     shaderProgramQuad->setUniformValue("texture", 0);
     glBindTexture(GL_TEXTURE_2D, fbo->texture());
     vaoQuad.bind();
     glDrawArrays(GL_TRIANGLES, 0, 6);
+
+}
+
+void MyOpenGLWidget::changeShowState(int flag)
+{
 
 }
