@@ -41,6 +41,7 @@ private:
     QScopedPointer<QOpenGLTexture> textureCube;
     QScopedPointer<QOpenGLFramebufferObject> fbo;
     QScopedPointer<QOpenGLTexture> fboTexture;
+    int renderFlag = 1;
 };
 
 #endif // MYOPENGLWIDGET_H

@@ -8,7 +8,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     connect(this, &MainWindow::button_click , ui->openGLWidget, &MyOpenGLWidget::changeShowState);
-    connect(ui->pushButton , &QPushButton::clicked , this, [=](){emit button_click(0);});
+    connect(ui->pushButton , &QPushButton::clicked , this, [=](){emit button_click(1);});
+    connect(ui->pushButton_2 , &QPushButton::clicked , this, [=](){emit button_click(2);});
+    connect(ui->pushButton_3 , &QPushButton::clicked , this, [=](){emit button_click(3);});
 }
 
 MainWindow::~MainWindow()

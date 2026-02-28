@@ -220,6 +220,7 @@ void MyOpenGLWidget::paintGL()
     glDisable(GL_DEPTH_TEST);
     shaderProgramQuad->bind();
     shaderProgramQuad->setUniformValue("texture", 0);
+    shaderProgramQuad->setUniformValue("renderFlag", renderFlag);
     glBindTexture(GL_TEXTURE_2D, fbo->texture());
     vaoQuad.bind();
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -228,5 +229,7 @@ void MyOpenGLWidget::paintGL()
 
 void MyOpenGLWidget::changeShowState(int flag)
 {
-
+    renderFlag = flag;
+    update();
 }
+
