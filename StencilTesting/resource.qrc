@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>fragment.glsl</file>
+        <file>vertex.glsl</file>
+        <file>marble.jpg</file>
+        <file>metal.png</file>
+        <file>fragment_border.glsl</file>
+    </qresource>
+</RCC>
